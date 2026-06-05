@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>真偽AoE判断 Round 2 ハード</title>
+<style>
+:root{
+  --panel:#161f31; --panel2:#1c2740; --text:#eef4ff; --muted:#aeb9d3;
+  --line:#33425f; --accent:#8ad6ff; --good:#70e3a0; --bad:#ff8393;
+  --red:#ff6a6a; --blue:#6cc7ff; --purple:#d06eff; --green:#5ee27a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--text);
+  background:radial-gradient(circle at top, #23304c 0%, #0d1420 42%, #080b11 100%);
+}
+.wrap{max-width:1220px;margin:0 auto;padding:22px 16px 48px}
+h1{margin:0 0 8px;font-size:clamp(24px,4vw,38px)}
+.sub{color:var(--muted);line-height:1.8;margin-bottom:16px}
+.layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(340px,.82fr);gap:16px}
+@media(max-width:940px){.layout{grid-template-columns:1fr}}
+.card{background:rgba(22,31,49,.92);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:16px;box-shadow:0 18px 36px rgba(0,0,0,.3)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--panel2);border:1px solid rgba(255,255,255,.08);color:var(--muted);font-size:14px}
+.boardWrap{background:#0c1320;border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px}
+.boardTitle{font-weight:800;margin-bottom:10px}
+.board{
+  width:min(100%,620px);aspect-ratio:1/1;margin:0 auto;position:relative;border-radius:50%;overflow:hidden;
+  border:3px solid rgba(255,255,255,.35);
+  background:
+    radial-gradient(circle at center, rgba(125,160,255,.08) 0%, rgba(255,255,255,.02) 58%, rgba(255,255,255,0) 74%),
+    linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+}
+.iceZone{position:absolute;background:rgba(255,111,82,.48);z-index:1}
+.qA{left:0;top:0;width:50%;height:50%}.qB{right:0;top:0;width:50%;height:50%}.qC{right:0;bottom:0;width:50%;height:50%}.qD{left:0;bottom:0;width:50%;height:50%}
+.lightningLayer{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.92}
+.lightRect{stroke:rgba(255,180,255,.22);stroke-width:.35}
+.dividerV,.dividerH{position:absolute;background:rgba(255,255,255,.18);z-index:5}
+.dividerV{left:50%;top:7%;bottom:7%;width:2px;transform:translateX(-50%)}
+.dividerH{top:50%;left:7%;right:7%;height:2px;transform:translateY(-50%)}
+.quadLabel{position:absolute;font-size:34px;font-weight:900;color:rgba(255,255,255,.9);text-shadow:0 0 12px rgba(255,255,255,.15);z-index:7}
+.l1{left:28%;top:23%}.l2{right:22%;top:23%}.l3{right:24%;bottom:20%}.l4{left:28%;bottom:20%}
+.boss{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:12}
+.bossCore{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #fff3aa, #f8bb47 55%, #8f5b14 100%);box-shadow:0 0 18px rgba(255,197,82,.4)}
+.ringGroup{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:13}
+.ringTop{top:33%}.ringBottom{top:57%}
+.ringLabel{font-size:14px;font-weight:800;letter-spacing:.03em;color:#d9e5ff;min-width:52px}
+.ring{width:122px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;position:relative;font-weight:900;box-shadow:inset 0 0 0 2px rgba(255,255,255,.16)}
+.ring.red{border:3px solid rgba(255,110,110,.88);background:rgba(255,80,80,.12)}
+.ring.blue{border:3px solid rgba(108,199,255,.9);background:rgba(78,156,255,.12)}
+.ball{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:#fff;box-shadow:0 0 10px rgba(255,255,255,.12)}
+.ball.red{background:radial-gradient(circle at 35% 35%, #ffc2c2, #ff6262 62%, #a11e1e 100%)}
+.ball.blue{background:radial-gradient(circle at 35% 35%, #c3ebff, #61baf5 62%, #14558b 100%)}
+.ringText{font-size:17px;font-weight:900;margin-left:8px}
+.board{cursor:crosshair}
+.clickMarker{
+  position:absolute; z-index:22; width:22px; height:22px; border-radius:50%;
+  transform:translate(-50%,-50%); pointer-events:none;
+  border:3px solid var(--accent); background:rgba(138,214,255,.18);
+  box-shadow:0 0 12px rgba(138,214,255,.35);
+}
+.clickMarker.correct{border-color:var(--good);background:rgba(112,227,160,.20)}
+.clickMarker.wrong{border-color:var(--bad);background:rgba(255,131,147,.20)}
+.legend{margin-top:12px;color:var(--muted);font-size:13px;line-height:1.7}
+.btnGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+button{
+  border:1px solid rgba(255,255,255,.09); background:var(--panel2);color:var(--text);
+  padding:14px 14px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;
+}
+button:hover{filter:brightness(1.08)}
+button.primary{background:linear-gradient(135deg,#4a93ff,#7edbff);color:#07111e}
+button.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+.result{min-height:62px;margin-top:14px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#0f1726;color:var(--muted);line-height:1.6}
+.result.good{background:rgba(112,227,160,.09);border-color:rgba(112,227,160,.45);color:#dfffee}
+.result.bad{background:rgba(255,131,147,.1);border-color:rgba(255,131,147,.45);color:#ffe5ea}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat div{background:#101827;border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}
+details{margin-top:14px} summary{cursor:pointer;font-weight:800}
+.muted{color:var(--muted);line-height:1.7}.mini{font-size:13px;color:var(--muted);line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>真偽AoE判断 Round 2 ハード</h1>
+  <div class="sub">
+    Round 2：<b>雷 + 氷床</b> の真偽判断後、<b>最終安地の点</b>を選ぶ版。<br>
+    上の赤い輪は雷、下の青い輪は氷床。球が<b>？なら逆</b>。<br>
+    <b>正解は複数ある場合あり</b>。安全な点ならどれを押しても正解。
+  </div>
+
+  <div class="layout">
+    <section class="card">
+      <div class="row">
+        <span class="pill">Round 2</span>
+        <span class="pill">ハード</span>
+        <label class="pill"><input type="checkbox" id="autoNext" checked> 正解後に自動で次へ</label>
+      </div>
+
+      <div class="boardWrap">
+        <div class="boardTitle">安全だと思う場所をクリック</div>
+        <div class="board">
+          <div class="iceZone qA" data-zone="A"></div>
+          <div class="iceZone qB" data-zone="B"></div>
+          <div class="iceZone qC" data-zone="C"></div>
+          <div class="iceZone qD" data-zone="D"></div>
+
+          <svg class="lightningLayer" id="lightningLayer" viewBox="0 0 100 100" aria-label="雷予兆">
+            <defs>
+              <clipPath id="arenaClipR2H"><circle cx="50" cy="50" r="50"></circle></clipPath>
+            </defs>
+            <g id="lightningGroup" clip-path="url(#arenaClipR2H)">
+              <rect class="lightRect" data-band="0" x="0" y="-50" width="25" height="200"></rect>
+              <rect class="lightRect" data-band="1" x="25" y="-50" width="25" height="200"></rect>
+              <rect class="lightRect" data-band="2" x="50" y="-50" width="25" height="200"></rect>
+              <rect class="lightRect" data-band="3" x="75" y="-50" width="25" height="200"></rect>
+            </g>
+          </svg>
+
+          <div class="dividerV"></div>
+          <div class="dividerH"></div>
+          <div class="quadLabel l1">1</div>
+          <div class="quadLabel l2">2</div>
+          <div class="quadLabel l3">3</div>
+          <div class="quadLabel l4">4</div>
+
+          <div class="boss"><div class="bossCore"></div></div>
+
+          <div class="ringGroup ringTop">
+            <div class="ringLabel">上</div>
+            <div class="ring red">
+              <div class="ball red" id="topBall"></div>
+              <div class="ringText">雷</div>
+            </div>
+          </div>
+
+          <div class="ringGroup ringBottom">
+            <div class="ringLabel">下</div>
+            <div class="ring blue">
+              <div class="ball blue" id="bottomBall"></div>
+              <div class="ringText">氷床</div>
+            </div>
+          </div>
+          <div id="clickMarker" class="clickMarker" style="display:none"></div>
+        </div>
+
+        <div class="legend">
+          紫の帯が<b>見えている雷予兆</b>、赤い床が<b>見えている氷予兆</b>。<br>
+          <b>実際の雷安地</b>かつ<b>実際の氷安地</b>だと思う場所をクリック。
+        </div>
+      </div>
+
+      <div class="btnGrid">
+        <button class="primary" id="checkBtn">判定</button>
+        <button id="nextBtn">次の問題</button>
+      </div>
+      <div class="result" id="result">安全だと思う場所をクリックして判定してね。</div>
+    </section>
+
+    <aside class="card">
+      <h2 style="margin:0 0 10px;font-size:18px">成績</h2>
+      <div class="stat">
+        <div><b id="total">0</b><span>回答</span></div>
+        <div><b id="ok">0</b><span>正解</span></div>
+        <div><b id="ng">0</b><span>ミス</span></div>
+        <div><b id="rate">0%</b><span>正答率</span></div>
+      </div>
+
+      <div class="btnGrid" style="grid-template-columns:1fr;margin-top:12px">
+        <button class="ghost" id="retryBtn">同じ問題をやり直す</button>
+        <button class="ghost" id="resetBtn">成績リセット</button>
+      </div>
+
+      <details open>
+        <summary>仕様メモ</summary>
+        <div class="muted">
+          ・上の赤い輪：雷。<b>？なし</b>なら見えている雷予兆が危険、<b>？あり</b>なら逆。<br>
+          ・下の青い輪：氷床。<b>？なし</b>なら見えている氷予兆が危険、<b>？あり</b>なら逆。<br>
+          ・雷は右肩上がり/右肩下がり、帯は「安置/予兆/安置/予兆」または「予兆/安置/予兆/安置」がランダム。<br>
+          ・複数の候補点が正解になりうる。
+        </div>
+      </details>
+
+      <details open>
+        <summary>ミス履歴</summary>
+        <div id="misses" class="mini">まだミスはありません。</div>
+      </details>
+
+      <details>
+        <summary>権利表記</summary>
+        <div class="mini">このツールはFINAL FANTASY XIVの非公式ファンメイド練習ツールです。FINAL FANTASY XIV © SQUARE ENIX</div>
+      </details>
+    </aside>
+  </div>
+</div>
+
+<script>
+const ICE_PATTERNS = [
+  { value:"13", label:"1・3", zones:["A","C"] },
+  { value:"24", label:"2・4", zones:["B","D"] }
+];
+const LIGHT_PATTERNS = [
+  { slope:"up", label:"右肩上がり", startsDanger:false },
+  { slope:"up", label:"右肩上がり", startsDanger:true },
+  { slope:"down", label:"右肩下がり", startsDanger:false },
+  { slope:"down", label:"右肩下がり", startsDanger:true }
+];
+let q = null;
+let selectedPoint = null; // {x, y} in board percentage coordinates
+let stats = JSON.parse(localStorage.getItem('shingiR2HardStats') || '{"total":0,"ok":0,"ng":0,"misses":[]}');
+
+function newQuestion(){
+  const ice = ICE_PATTERNS[Math.floor(Math.random()*ICE_PATTERNS.length)];
+  const light = LIGHT_PATTERNS[Math.floor(Math.random()*LIGHT_PATTERNS.length)];
+  const topFake = Math.random() < 0.5;
+  const bottomFake = Math.random() < 0.5;
+  q = { ice, light, topFake, bottomFake };
+  selectedPoint = null;
+  renderQuestion();
+  renderSelection(false);
+  setResult('安全だと思う場所をクリックして判定してね。', '');
+}
+
+function renderQuestion(){
+  document.getElementById('topBall').textContent = q.topFake ? '？' : '';
+  document.getElementById('bottomBall').textContent = q.bottomFake ? '？' : '';
+  document.querySelectorAll('.iceZone').forEach(el=>{
+    el.style.display = q.ice.zones.includes(el.dataset.zone) ? 'block' : 'none';
+  });
+  const group = document.getElementById('lightningGroup');
+  group.setAttribute('transform', q.light.slope === 'up' ? 'rotate(-45 50 50)' : 'rotate(45 50 50)');
+  document.querySelectorAll('.lightRect').forEach((el, idx)=>{
+    const shownDanger = q.light.startsDanger ? idx % 2 === 0 : idx % 2 === 1;
+    el.style.fill = shownDanger ? 'rgba(205,90,255,0.52)' : 'rgba(255,255,255,0)';
+  });
+}
+
+function actualIceSafe(){
+  return q.bottomFake ? q.ice.value : (q.ice.value === '13' ? '24' : '13');
+}
+
+function pointInIceSafe(pt){
+  const isA = pt.x < 50 && pt.y < 50;
+  const isB = pt.x >= 50 && pt.y < 50;
+  const isC = pt.x >= 50 && pt.y >= 50;
+  const isD = pt.x < 50 && pt.y >= 50;
+  const safe = actualIceSafe();
+  return safe === '13' ? (isA || isC) : (isB || isD);
+}
+
+function pointInLightningSafe(pt){
+  const dx = pt.x - 50;
+  const dy = pt.y - 50;
+  const deg = q.light.slope === 'up' ? 45 : -45; // inverse rotation
+  const rad = deg * Math.PI / 180;
+  const xr = 50 + dx * Math.cos(rad) - dy * Math.sin(rad);
+  let band = Math.floor(xr / 25);
+  if(band < 0) band = 0;
+  if(band > 3) band = 3;
+  let danger = q.light.startsDanger ? (band % 2 === 0) : (band % 2 === 1);
+  if(q.topFake) danger = !danger;
+  return !danger;
+}
+
+function selectedIsCorrect(){
+  if(!selectedPoint) return false;
+  return pointInIceSafe(selectedPoint) && pointInLightningSafe(selectedPoint);
+}
+
+function renderSelection(mark){
+  const marker = document.getElementById('clickMarker');
+  if(!selectedPoint){
+    marker.style.display = 'none';
+    marker.classList.remove('correct','wrong');
+    return;
+  }
+  marker.style.display = 'block';
+  marker.style.left = selectedPoint.x + '%';
+  marker.style.top = selectedPoint.y + '%';
+  marker.classList.remove('correct','wrong');
+  if(mark) marker.classList.add(selectedIsCorrect() ? 'correct' : 'wrong');
+}
+
+function setResult(msg, cls){
+  const el = document.getElementById('result');
+  el.innerHTML = msg;
+  el.className = 'result' + (cls ? ' ' + cls : '');
+}
+
+function check(){
+  if(!selectedPoint){
+    setResult('先に安全だと思う場所をクリックしてね。', 'bad');
+    return;
+  }
+  const ok = selectedIsCorrect();
+  stats.total += 1;
+  if(ok) stats.ok += 1;
+  else {
+    stats.ng += 1;
+    stats.misses.unshift(
+      `雷:${q.light.label}${q.light.startsDanger ? '（危安危安）' : '（安危安危）'}${q.topFake ? '？' : ''} / 氷:${q.ice.label}${q.bottomFake ? '？' : ''} → 選択:${selectedPoint.x.toFixed(1)}%,${selectedPoint.y.toFixed(1)}%`
+    );
+    stats.misses = stats.misses.slice(0, 12);
+  }
+  saveStats(); renderStats(); renderSelection(true);
+  const msg = `実際の雷安地かつ氷安地なら正解`;
+  setResult(ok ? `正解！ ${msg}` : `惜しい。${msg}`, ok ? 'good' : 'bad');
+  if(ok && document.getElementById('autoNext').checked){
+    setTimeout(newQuestion, 850);
+  }
+}
+
+function retry(){
+  selectedPoint = null;
+  renderSelection(false);
+  setResult('同じ問題です。もう一度選んでね。', '');
+}
+
+function saveStats(){ localStorage.setItem('shingiR2HardStats', JSON.stringify(stats)); }
+function renderStats(){
+  document.getElementById('total').textContent = stats.total;
+  document.getElementById('ok').textContent = stats.ok;
+  document.getElementById('ng').textContent = stats.ng;
+  document.getElementById('rate').textContent = stats.total ? Math.round(stats.ok / stats.total * 100) + '%' : '0%';
+  document.getElementById('misses').innerHTML = stats.misses.length ? stats.misses.map(m=>`・${m}`).join('<br>') : 'まだミスはありません。';
+}
+
+document.querySelector('.board').addEventListener('click', (e)=>{
+  if(e.target.closest('.ringGroup') || e.target.closest('.boss')) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  selectedPoint = {
+    x: (e.clientX - rect.left) / rect.width * 100,
+    y: (e.clientY - rect.top) / rect.height * 100
+  };
+  renderSelection(false);
+});
+document.getElementById('checkBtn').onclick = check;
+document.getElementById('nextBtn').onclick = newQuestion;
+document.getElementById('retryBtn').onclick = retry;
+document.getElementById('resetBtn').onclick = ()=>{ stats = {total:0, ok:0, ng:0, misses:[]}; saveStats(); renderStats(); };
+renderStats();
+newQuestion();
+</script>
+</body>
+</html>

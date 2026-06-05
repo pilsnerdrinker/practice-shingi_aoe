@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>真偽AoE判断 Round 1 ハード</title>
+<style>
+:root{
+  --panel:#161f31; --panel2:#1c2740; --text:#eef4ff; --muted:#aeb9d3;
+  --line:#33425f; --accent:#8ad6ff; --good:#70e3a0; --bad:#ff8393;
+  --ice:#ff6f52; --red:#ff6a6a; --blue:#6cc7ff; --warn:#ffd56b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--text);
+  background:radial-gradient(circle at top, #23304c 0%, #0d1420 42%, #080b11 100%);
+}
+.wrap{max-width:1220px;margin:0 auto;padding:22px 16px 48px}
+h1{margin:0 0 8px;font-size:clamp(24px,4vw,38px)}
+.sub{color:var(--muted);line-height:1.8;margin-bottom:16px}
+.layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(340px,.82fr);gap:16px}
+@media(max-width:940px){.layout{grid-template-columns:1fr}}
+.card{background:rgba(22,31,49,.92);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:16px;box-shadow:0 18px 36px rgba(0,0,0,.3)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--panel2);border:1px solid rgba(255,255,255,.08);color:var(--muted);font-size:14px}
+.posGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:10px}
+@media(max-width:680px){.posGrid{grid-template-columns:repeat(4,1fr)}}
+.posBtn{padding:10px 8px;font-size:15px}
+.posBtn.selected{outline:3px solid var(--accent);background:#213655}
+.boardWrap{background:#0c1320;border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px}
+.boardTitle{font-weight:800;margin-bottom:10px}
+.board{
+  width:min(100%,620px);aspect-ratio:1/1;margin:0 auto;position:relative;border-radius:50%;overflow:hidden;
+  border:3px solid rgba(255,255,255,.35);
+  background:
+    radial-gradient(circle at center, rgba(125,160,255,.08) 0%, rgba(255,255,255,.02) 58%, rgba(255,255,255,0) 74%),
+    linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+}
+.dividerV,.dividerH{position:absolute;background:rgba(255,255,255,.18);z-index:3}
+.dividerV{left:50%;top:7%;bottom:7%;width:2px;transform:translateX(-50%)}
+.dividerH{top:50%;left:7%;right:7%;height:2px;transform:translateY(-50%)}
+.iceZone{position:absolute;background:rgba(255,111,82,.50);z-index:1}
+.qA{left:0;top:0;width:50%;height:50%}.qB{right:0;top:0;width:50%;height:50%}.qC{right:0;bottom:0;width:50%;height:50%}.qD{left:0;bottom:0;width:50%;height:50%}
+.quadLabel{position:absolute;font-size:30px;font-weight:900;color:rgba(255,255,255,.9);text-shadow:0 0 12px rgba(255,255,255,.15);z-index:7}
+.l1{left:27%;top:22%}.l2{right:22%;top:22%}.l3{right:24%;bottom:19%}.l4{left:27%;bottom:19%}
+.markerLabel{position:absolute;font-size:18px;font-weight:900;color:#ffe9a9;text-shadow:0 0 10px rgba(255,214,95,.25);z-index:8}
+.mA{left:50%;top:12%;transform:translateX(-50%)}.mB{right:12%;top:50%;transform:translateY(-50%)}.mC{left:50%;bottom:12%;transform:translateX(-50%)}.mD{left:12%;top:50%;transform:translateY(-50%)}
+.boss{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:12}
+.bossCore{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #fff3aa, #f8bb47 55%, #8f5b14 100%);box-shadow:0 0 18px rgba(255,197,82,.4)}
+.ringGroup{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:13}
+.ringTop{top:33%}.ringBottom{top:57%}
+.ringLabel{font-size:14px;font-weight:800;letter-spacing:.03em;color:#d9e5ff;min-width:52px}
+.ring{width:122px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;position:relative;font-weight:900;box-shadow:inset 0 0 0 2px rgba(255,255,255,.16)}
+.ring.red{border:3px solid rgba(255,110,110,.88);background:rgba(255,80,80,.12)}
+.ring.blue{border:3px solid rgba(108,199,255,.9);background:rgba(78,156,255,.12)}
+.ball{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:#fff;box-shadow:0 0 10px rgba(255,255,255,.12)}
+.ball.red{background:radial-gradient(circle at 35% 35%, #ffc2c2, #ff6262 62%, #a11e1e 100%)}
+.ball.blue{background:radial-gradient(circle at 35% 35%, #c3ebff, #61baf5 62%, #14558b 100%)}
+.ringText{font-size:17px;font-weight:900;margin-left:8px}
+.slot{
+  position:absolute; z-index:20; width:40px; height:40px; border-radius:11px;
+  transform:translate(-50%,-50%);
+  border:2px solid rgba(255,255,255,.35); background:rgba(14,21,34,.82); color:#eef4ff;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-weight:900; cursor:pointer; user-select:none; transition:.12s transform,.12s filter,.12s background;
+}
+.slot:hover{transform:translate(-50%,-50%);filter:brightness(1.12)}
+.slot .side{font-size:9px;color:var(--muted);line-height:1}
+.slot .mark{font-size:14px;line-height:1.05}
+.slot.stack{width:52px;height:42px;border-color:rgba(255,213,107,.72);background:rgba(255,213,107,.10)}
+.slot.stack .mark{font-size:13px;color:#ffe8a8}
+.slot.stack .side{color:#ffd56b}
+.slot.selected{outline:3px solid var(--accent);background:#213655}
+.slot.correct{outline:4px solid var(--good);background:rgba(112,227,160,.18)}
+.slot.wrong{outline:4px solid var(--bad);background:rgba(255,131,147,.16)}
+.slot.inactive{opacity:.35}
+.legend{margin-top:12px;color:var(--muted);font-size:13px;line-height:1.7}
+.qa{margin-top:16px}.qTitle{font-size:18px;font-weight:800;margin:0 0 8px}
+.btnGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{border:1px solid rgba(255,255,255,.09);background:var(--panel2);color:var(--text);padding:14px 14px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+button.primary{background:linear-gradient(135deg,#4a93ff,#7edbff);color:#07111e}
+button.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+.result{min-height:62px;margin-top:14px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#0f1726;color:var(--muted);line-height:1.6}
+.result.good{background:rgba(112,227,160,.09);border-color:rgba(112,227,160,.45);color:#dfffee}
+.result.bad{background:rgba(255,131,147,.1);border-color:rgba(255,131,147,.45);color:#ffe5ea}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat div{background:#101827;border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}
+details{margin-top:14px} summary{cursor:pointer;font-weight:800}
+.muted{color:var(--muted);line-height:1.7}.mini{font-size:13px;color:var(--muted);line-height:1.7}
+.kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0a101b;border:1px solid var(--line);padding:2px 6px;border-radius:6px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>真偽AoE判断 Round 1 ハード</h1>
+  <div class="sub">
+    Round 1：<b>集合/散会 + 氷床</b> の真偽判断後、選んだポジションの<b>実際の立ち位置</b>をクリックする版。<br>
+    上の赤い輪は頭割り/散会、下の青い輪は氷床。球が<b>？なら逆</b>。
+  </div>
+
+  <div class="layout">
+    <section class="card">
+      <div class="row">
+        <span class="pill">Round 1</span>
+        <span class="pill">ハード</span>
+        <label class="pill"><input type="checkbox" id="autoNext" checked> 正解後に自動で次へ</label>
+      </div>
+
+      <div class="qa" style="margin-top:12px">
+        <div class="qTitle">自分のポジション</div>
+        <div class="posGrid" id="posGrid"></div>
+      </div>
+
+      <div class="boardWrap">
+        <div class="boardTitle">正しい立ち位置をクリック</div>
+        <div class="board">
+          <div class="iceZone qA" data-zone="A"></div>
+          <div class="iceZone qB" data-zone="B"></div>
+          <div class="iceZone qC" data-zone="C"></div>
+          <div class="iceZone qD" data-zone="D"></div>
+
+          <div class="dividerV"></div>
+          <div class="dividerH"></div>
+          <div class="quadLabel l1">1</div>
+          <div class="quadLabel l2">2</div>
+          <div class="quadLabel l3">3</div>
+          <div class="quadLabel l4">4</div>
+          <div class="markerLabel mA">A</div>
+          <div class="markerLabel mB">B</div>
+          <div class="markerLabel mC">C</div>
+          <div class="markerLabel mD">D</div>
+
+          <div class="boss"><div class="bossCore"></div></div>
+
+          <div class="ringGroup ringTop">
+            <div class="ringLabel">上</div>
+            <div class="ring red">
+              <div class="ball red" id="topBall"></div>
+              <div class="ringText" id="topShown">頭割り</div>
+            </div>
+          </div>
+
+          <div class="ringGroup ringBottom">
+            <div class="ringLabel">下</div>
+            <div class="ring blue">
+              <div class="ball blue" id="bottomBall"></div>
+              <div class="ringText">氷床</div>
+            </div>
+          </div>
+          <!-- 各象限5個：散会13側 内/外、散会24側 内/外、集合 -->
+          <button class="slot" data-slot="A13_inner" style="left:46.4%;top:22.8%"><span class="mark">A</span><span class="side">13内</span></button>
+          <button class="slot" data-slot="A13_outer" style="left:46.5%;top:2.8%"><span class="mark">A</span><span class="side">13外</span></button>
+          <button class="slot" data-slot="A24_inner" style="left:53.7%;top:22.8%"><span class="mark">A</span><span class="side">24内</span></button>
+          <button class="slot" data-slot="A24_outer" style="left:53.7%;top:2.8%"><span class="mark">A</span><span class="side">24外</span></button>
+          <button class="slot stack" data-slot="A_stack" style="left:45.4%;top:43.0%"><span class="mark">1集合</span><span class="side">内</span></button>
+
+          <button class="slot" data-slot="B13_inner" style="left:69.8%;top:44.6%"><span class="mark">B</span><span class="side">13内</span></button>
+          <button class="slot" data-slot="B13_outer" style="left:95.2%;top:43.1%"><span class="mark">B</span><span class="side">13外</span></button>
+          <button class="slot" data-slot="B24_inner" style="left:69.8%;top:54.8%"><span class="mark">B</span><span class="side">24内</span></button>
+          <button class="slot" data-slot="B24_outer" style="left:95.2%;top:55.5%"><span class="mark">B</span><span class="side">24外</span></button>
+          <button class="slot stack" data-slot="B_stack" style="left:55.3%;top:43.0%"><span class="mark">2集合</span><span class="side">内</span></button>
+
+          <button class="slot" data-slot="C13_inner" style="left:53.2%;top:76.8%"><span class="mark">C</span><span class="side">13内</span></button>
+          <button class="slot" data-slot="C13_outer" style="left:53.0%;top:96.7%"><span class="mark">C</span><span class="side">13外</span></button>
+          <button class="slot" data-slot="C24_inner" style="left:45.6%;top:76.8%"><span class="mark">C</span><span class="side">24内</span></button>
+          <button class="slot" data-slot="C24_outer" style="left:45.0%;top:96.7%"><span class="mark">C</span><span class="side">24外</span></button>
+          <button class="slot stack" data-slot="C_stack" style="left:55.4%;top:55.8%"><span class="mark">3集合</span><span class="side">内</span></button>
+
+          <button class="slot" data-slot="D13_inner" style="left:27.8%;top:55.8%"><span class="mark">D</span><span class="side">13内</span></button>
+          <button class="slot" data-slot="D13_outer" style="left:4.8%;top:55.2%"><span class="mark">D</span><span class="side">13外</span></button>
+          <button class="slot" data-slot="D24_inner" style="left:27.8%;top:45.0%"><span class="mark">D</span><span class="side">24内</span></button>
+          <button class="slot" data-slot="D24_outer" style="left:4.8%;top:44.7%"><span class="mark">D</span><span class="side">24外</span></button>
+          <button class="slot stack" data-slot="D_stack" style="left:45.4%;top:55.8%"><span class="mark">4集合</span><span class="side">内</span></button>
+        </div>
+
+        <div class="legend">
+          赤く塗られている床が、<b>見えている氷予兆</b>。下の輪が？なら予兆側が本物の安置。<br>
+          各象限に5個ずつ（散会13側 内/外、散会24側 内/外、集合）。集合は <b>THが西側内、DPSが東側内</b>。
+        </div>
+      </div>
+
+      <div class="btnGrid" style="margin-top:14px">
+        <button class="primary" id="checkBtn">判定</button>
+        <button id="nextBtn">次の問題</button>
+      </div>
+      <div class="result" id="result">ポジションと立ち位置を選んで判定してね。</div>
+    </section>
+
+    <aside class="card">
+      <h2 style="margin:0 0 10px;font-size:18px">成績</h2>
+      <div class="stat">
+        <div><b id="total">0</b><span>回答</span></div>
+        <div><b id="ok">0</b><span>正解</span></div>
+        <div><b id="ng">0</b><span>ミス</span></div>
+        <div><b id="rate">0%</b><span>正答率</span></div>
+      </div>
+
+      <div class="btnGrid" style="grid-template-columns:1fr;margin-top:12px">
+        <button class="ghost" id="retryBtn">同じ問題をやり直す</button>
+        <button class="ghost" id="resetBtn">成績リセット</button>
+      </div>
+
+      <details open>
+        <summary>仕様メモ</summary>
+        <div class="muted">
+          <p>上の赤い輪：頭割り/散会。？なしなら見たまま、？ありなら逆。回答上は頭割り＝集合。</p>
+          <p>下の青い輪：氷床。？なしなら予兆は危険、？ありなら予兆側が安置。</p>
+          <p><b>散会 1・3安置</b>：A内MT/A外H1、D内ST/D外H2、B内D2/B外D4、C内D1/C外D3。</p>
+          <p><b>散会 2・4安置</b>：A内D1/A外D3、B内D2/B外D4、D内ST/D外H2、C内MT/C外H1。</p>
+          <p><b>集合</b>：THは西側の安置内側、DPSは東側の安置内側。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>キーボード操作</summary>
+        <div class="mini">
+          ポジション：<span class="kbd">M</span> MT / <span class="kbd">T</span> ST / <span class="kbd">1</span> H1 / <span class="kbd">2</span> H2 / <span class="kbd">3</span> D1 / <span class="kbd">4</span> D2 / <span class="kbd">5</span> D3 / <span class="kbd">6</span> D4<br>
+          立ち位置：<span class="kbd">Q/W</span> A内外、<span class="kbd">E/R</span> B内外、<span class="kbd">A/S</span> D内外、<span class="kbd">D/F</span> C内外、<span class="kbd">G/H</span> 集合（TH側/DPS側）<br>
+          <span class="kbd">Enter</span> 判定 / <span class="kbd">Space</span> 次の問題 / <span class="kbd">Z</span> 同じ問題をやり直す
+        </div>
+      </details>
+
+      <details open>
+        <summary>ミス履歴</summary>
+        <div id="misses" class="mini">まだミスはありません。</div>
+      </details>
+
+      <details>
+        <summary>権利表記</summary>
+        <div class="mini">このツールはFINAL FANTASY XIVの非公式ファンメイド練習ツールです。FINAL FANTASY XIV © SQUARE ENIX</div>
+      </details>
+    </aside>
+  </div>
+</div>
+
+<script>
+const POSITIONS = ["MT","ST","H1","H2","D1","D2","D3","D4"];
+const TH = new Set(["MT","ST","H1","H2"]);
+const DPS = new Set(["D1","D2","D3","D4"]);
+const SHOWN_MECHS = [{value:"stack", shown:"頭割り"}, {value:"spread", shown:"散会"}];
+const ICE_PATTERNS = [
+  { value:"13", label:"1・3", zones:["A","C"] },
+  { value:"24", label:"2・4", zones:["B","D"] }
+];
+
+const spreadMap = {
+  safe13: {
+    MT:"A13_inner", H1:"A13_outer",
+    ST:"D13_inner", H2:"D13_outer",
+    D2:"B13_inner", D4:"B13_outer",
+    D1:"C13_inner", D3:"C13_outer"
+  },
+  safe24: {
+    D1:"A24_inner", D3:"A24_outer",
+    D2:"B24_inner", D4:"B24_outer",
+    ST:"D24_inner", H2:"D24_outer",
+    MT:"C24_inner", H1:"C24_outer"
+  }
+};
+
+const slotLabels = {
+  A13_inner:"A 13側 内", A13_outer:"A 13側 外", A24_inner:"A 24側 内", A24_outer:"A 24側 外", A_stack:"1集合",
+  B13_inner:"B 13側 内", B13_outer:"B 13側 外", B24_inner:"B 24側 内", B24_outer:"B 24側 外", B_stack:"2集合",
+  C13_inner:"C 13側 内", C13_outer:"C 13側 外", C24_inner:"C 24側 内", C24_outer:"C 24側 外", C_stack:"3集合",
+  D13_inner:"D 13側 内", D13_outer:"D 13側 外", D24_inner:"D 24側 内", D24_outer:"D 24側 外", D_stack:"4集合"
+};
+
+let q = null;
+let selectedPos = localStorage.getItem("shingiR1HardPos") || "MT";
+let selectedSlot = null;
+let stats = JSON.parse(localStorage.getItem("shingiR1HardStats") || '{"total":0,"ok":0,"ng":0,"misses":[]}');
+
+function flipMech(m){ return m === "stack" ? "spread" : "stack"; }
+function shownMechLabel(m){ return m === "stack" ? "頭割り" : "散会"; }
+function actualMechLabel(m){ return m === "stack" ? "集合" : "散会"; }
+function safeFromIce(shownIce, bottomFake){
+  if(bottomFake) return shownIce;
+  return shownIce === "13" ? "24" : "13";
+}
+function calcAnswerSlot(){
+  const safe = q.safe;
+  if(q.actualMechanic === "spread"){
+    return spreadMap[safe === "13" ? "safe13" : "safe24"][selectedPos];
+  }
+  // 集合：TH西、DPS東。safe13なら西=A/東=C、safe24なら西=D/東=B。
+  if(TH.has(selectedPos)){
+    return safe === "13" ? "A_stack" : "D_stack";
+  }
+  return safe === "13" ? "C_stack" : "B_stack";
+}
+
+function newQuestion(){
+  const shownMechanic = SHOWN_MECHS[Math.floor(Math.random()*SHOWN_MECHS.length)].value;
+  const ice = ICE_PATTERNS[Math.floor(Math.random()*ICE_PATTERNS.length)];
+  const topFake = Math.random() < 0.5;
+  const bottomFake = Math.random() < 0.5;
+  const actualMechanic = topFake ? flipMech(shownMechanic) : shownMechanic;
+  const safe = safeFromIce(ice.value, bottomFake);
+  q = {shownMechanic, topFake, ice, bottomFake, actualMechanic, safe};
+  selectedSlot = null;
+  renderAll();
+  setResult("ポジションと立ち位置を選んで判定してね。", "");
+}
+
+function renderAll(){
+  renderPos();
+  renderQuestion();
+  renderSlots(false);
+}
+function renderPos(){
+  const box = document.getElementById("posGrid");
+  box.innerHTML = "";
+  for(const p of POSITIONS){
+    const btn = document.createElement("button");
+    btn.className = "posBtn" + (p === selectedPos ? " selected" : "");
+    btn.textContent = p;
+    btn.onclick = ()=>{ selectedPos = p; localStorage.setItem("shingiR1HardPos", p); renderPos(); renderSlots(false); };
+    box.appendChild(btn);
+  }
+}
+function renderQuestion(){
+  document.getElementById("topShown").textContent = shownMechLabel(q.shownMechanic);
+  document.getElementById("topBall").textContent = q.topFake ? "？" : "";
+  document.getElementById("bottomBall").textContent = q.bottomFake ? "？" : "";
+
+  document.querySelectorAll(".iceZone").forEach(el=>{
+    el.style.display = q.ice.zones.includes(el.dataset.zone) ? "block" : "none";
+  });
+}
+function renderSlots(mark){
+  const answer = calcAnswerSlot();
+  document.querySelectorAll(".slot").forEach(btn=>{
+    btn.classList.remove("selected","correct","wrong","inactive");
+    if(btn.dataset.slot === selectedSlot) btn.classList.add("selected");
+    // 現在の安置パターンに関係しない選択肢を薄くする
+    const safeSlots = q.safe === "13"
+      ? ["A13_inner","A13_outer","A_stack","C13_inner","C13_outer","C_stack","B13_inner","B13_outer","D13_inner","D13_outer"]
+      : ["A24_inner","A24_outer","B24_inner","B24_outer","B_stack","C24_inner","C24_outer","D24_inner","D24_outer","D_stack"];
+    if(!safeSlots.includes(btn.dataset.slot)) btn.classList.add("inactive");
+    if(mark){
+      if(btn.dataset.slot === answer) btn.classList.add("correct");
+      else if(btn.dataset.slot === selectedSlot) btn.classList.add("wrong");
+    }
+  });
+}
+
+function setResult(msg, cls){
+  const el = document.getElementById("result");
+  el.innerHTML = msg;
+  el.className = "result" + (cls ? " " + cls : "");
+}
+
+function check(){
+  if(!selectedPos){ setResult("先にポジションを選んでね。", "bad"); return; }
+  if(!selectedSlot){ setResult("立ち位置を選んでね。", "bad"); return; }
+  const answer = calcAnswerSlot();
+  const ok = selectedSlot === answer;
+  stats.total += 1;
+  if(ok) stats.ok += 1;
+  else {
+    stats.ng += 1;
+    stats.misses.unshift(`${selectedPos} / 上:${shownMechLabel(q.shownMechanic)}${q.topFake ? "？" : ""} / 下:${q.ice.label}${q.bottomFake ? "？" : ""} → ${actualMechLabel(q.actualMechanic)}・安置${q.safe}・正解:${slotLabels[answer]}`);
+    stats.misses = stats.misses.slice(0, 12);
+  }
+  saveStats(); renderStats(); renderSlots(true);
+  const msg = `正解：<b>${slotLabels[answer]}</b>（${actualMechLabel(q.actualMechanic)} / 安置${q.safe}）`;
+  setResult(ok ? `正解！ ${msg}` : `惜しい。${msg}`, ok ? "good" : "bad");
+  if(ok && document.getElementById("autoNext").checked){ setTimeout(newQuestion, 850); }
+}
+
+function retry(){
+  selectedSlot = null;
+  renderSlots(false);
+  setResult("同じ問題です。もう一度選んでね。", "");
+}
+
+function saveStats(){ localStorage.setItem("shingiR1HardStats", JSON.stringify(stats)); }
+function renderStats(){
+  document.getElementById("total").textContent = stats.total;
+  document.getElementById("ok").textContent = stats.ok;
+  document.getElementById("ng").textContent = stats.ng;
+  document.getElementById("rate").textContent = stats.total ? Math.round(stats.ok / stats.total * 100) + "%" : "0%";
+  document.getElementById("misses").innerHTML = stats.misses.length ? stats.misses.map(m=>`・${m}`).join("<br>") : "まだミスはありません。";
+}
+
+document.querySelectorAll(".slot").forEach(btn=>{
+  btn.addEventListener("click", ()=>{ selectedSlot = btn.dataset.slot; renderSlots(false); });
+});
+document.getElementById("checkBtn").onclick = check;
+document.getElementById("nextBtn").onclick = newQuestion;
+document.getElementById("retryBtn").onclick = retry;
+document.getElementById("resetBtn").onclick = ()=>{ stats = {total:0, ok:0, ng:0, misses:[]}; saveStats(); renderStats(); };
+
+document.addEventListener("keydown", e=>{
+  const posMap = {m:"MT", t:"ST", "1":"H1", "2":"H2", "3":"D1", "4":"D2", "5":"D3", "6":"D4"};
+  // キーボードは使用頻度の高い現在安置側の散会/集合に寄せる
+  const slotMap = {
+    q: q?.safe === "13" ? "A13_inner" : "A24_inner",
+    w: q?.safe === "13" ? "A13_outer" : "A24_outer",
+    e: q?.safe === "13" ? "B13_inner" : "B24_inner",
+    r: q?.safe === "13" ? "B13_outer" : "B24_outer",
+    a: q?.safe === "13" ? "D13_inner" : "D24_inner",
+    s: q?.safe === "13" ? "D13_outer" : "D24_outer",
+    d: q?.safe === "13" ? "C13_inner" : "C24_inner",
+    f: q?.safe === "13" ? "C13_outer" : "C24_outer",
+    g: q?.safe === "13" ? "A_stack" : "D_stack",
+    h: q?.safe === "13" ? "C_stack" : "B_stack"
+  };
+  const key = e.key.toLowerCase();
+  if(posMap[key]){ selectedPos = posMap[key]; localStorage.setItem("shingiR1HardPos", selectedPos); renderPos(); renderSlots(false); }
+  if(slotMap[key]){ selectedSlot = slotMap[key]; renderSlots(false); }
+  if(e.key === "Enter") check();
+  if(e.key === " "){ e.preventDefault(); newQuestion(); }
+  if(key === "z") retry();
+});
+
+renderStats();
+newQuestion();
+</script>
+</body>
+</html>

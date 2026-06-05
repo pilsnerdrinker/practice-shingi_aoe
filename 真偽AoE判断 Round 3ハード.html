@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>真偽AoE判断 Round 3 ハード</title>
+<style>
+:root{
+  --panel:#161f31; --panel2:#1c2740; --text:#eef4ff; --muted:#aeb9d3;
+  --line:#33425f; --accent:#8ad6ff; --good:#70e3a0; --bad:#ff8393;
+  --red:#ff6a6a; --blue:#6cc7ff; --purple:#d06eff; --yellow:#ffd86b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--text);
+  background:radial-gradient(circle at top, #23304c 0%, #0d1420 42%, #080b11 100%);
+}
+.wrap{max-width:1240px;margin:0 auto;padding:22px 16px 48px}
+h1{margin:0 0 8px;font-size:clamp(24px,4vw,38px)}
+.sub{color:var(--muted);line-height:1.8;margin-bottom:16px}
+.layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(340px,.82fr);gap:16px}
+@media(max-width:940px){.layout{grid-template-columns:1fr}}
+.card{background:rgba(22,31,49,.92);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:16px;box-shadow:0 18px 36px rgba(0,0,0,.3)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--panel2);border:1px solid rgba(255,255,255,.08);color:var(--muted);font-size:14px}
+.posGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:10px}
+@media(max-width:680px){.posGrid{grid-template-columns:repeat(4,1fr)}}
+.posBtn.selected,.gazeBtn.selected{outline:3px solid var(--accent);background:#213655}
+.boardWrap{background:#0c1320;border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px}
+.boardTitle{font-weight:800;margin-bottom:10px}
+.board{
+  width:min(100%,620px);aspect-ratio:1/1;margin:0 auto;position:relative;border-radius:50%;overflow:hidden;
+  border:3px solid rgba(255,255,255,.35);
+  background:
+    radial-gradient(circle at center, rgba(125,160,255,.08) 0%, rgba(255,255,255,.02) 58%, rgba(255,255,255,0) 74%),
+    linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+}
+.lightningLayer{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.92}
+.lightRect{stroke:rgba(255,180,255,.22);stroke-width:.35}
+.dividerV,.dividerH{position:absolute;background:rgba(255,255,255,.18);z-index:5}
+.dividerV{left:50%;top:7%;bottom:7%;width:2px;transform:translateX(-50%)}
+.dividerH{top:50%;left:7%;right:7%;height:2px;transform:translateY(-50%)}
+.markN{position:absolute;top:7%;left:50%;transform:translateX(-50%);font-size:26px;font-weight:900;color:#fff8c7;z-index:10;text-shadow:0 0 14px rgba(255,215,95,.22)}
+.quadLabel{position:absolute;font-size:34px;font-weight:900;color:rgba(255,255,255,.9);text-shadow:0 0 12px rgba(255,255,255,.15);z-index:7}
+.l1{left:28%;top:23%}.l2{right:22%;top:23%}.l3{right:24%;bottom:20%}.l4{left:28%;bottom:20%}
+.boss{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:12}
+.bossCore{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #fff3aa, #f8bb47 55%, #8f5b14 100%);box-shadow:0 0 18px rgba(255,197,82,.4)}
+.ringGroup{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:13}
+.ringTop{top:33%}.ringBottom{top:57%}
+.ringLabel{font-size:14px;font-weight:800;letter-spacing:.03em;color:#d9e5ff;min-width:52px}
+.ring{width:122px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;position:relative;font-weight:900;box-shadow:inset 0 0 0 2px rgba(255,255,255,.16)}
+.ring.red{border:3px solid rgba(255,110,110,.88);background:rgba(255,80,80,.12)}
+.ring.blue{border:3px solid rgba(108,199,255,.9);background:rgba(78,156,255,.12)}
+.ball{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:#fff;box-shadow:0 0 10px rgba(255,255,255,.12)}
+.ball.red{background:radial-gradient(circle at 35% 35%, #ffc2c2, #ff6262 62%, #a11e1e 100%)}
+.ball.blue{background:radial-gradient(circle at 35% 35%, #c3ebff, #61baf5 62%, #14558b 100%)}
+.ringText{font-size:17px;font-weight:900;margin-left:8px}
+.gazeGroup{position:absolute;left:50%;top:14%;transform:translateX(-50%);z-index:14;display:flex;align-items:center;gap:10px;background:rgba(8,13,22,.68);border:1px solid rgba(255,255,255,.08);padding:8px 12px;border-radius:999px}
+.gazeLabel{font-size:14px;font-weight:800;color:#d9e5ff}
+.gazeEye{width:48px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;position:relative}
+.gazeEye.purple{background:rgba(208,110,255,.18);border:2px solid rgba(208,110,255,.92);color:#f0d1ff}
+.gazeEye.yellow{background:rgba(255,216,107,.18);border:2px solid rgba(255,216,107,.92);color:#fff3bc}
+.gazeEye small{position:absolute;right:5px;top:1px;font-size:16px;line-height:1}
+.slot{
+  position:absolute; z-index:20; width:30px; height:30px; border-radius:8px;
+  transform:translate(-50%,-50%);
+  border:2px solid rgba(255,255,255,.88); background:transparent;
+  cursor:pointer; transition:.12s filter,.12s border-color,.12s outline-color;
+  display:flex; align-items:center; justify-content:center;
+  color:#f6fbff; font-size:10px; font-weight:900; letter-spacing:-0.02em;
+  text-shadow:0 0 6px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.55);
+  line-height:1;
+}
+.slot:hover{transform:translate(-50%,-50%);filter:brightness(1.12)}
+.slot.selected{outline:3px solid var(--accent);background:transparent}
+.slot.correct{outline:4px solid var(--good);background:transparent;border-color:rgba(112,227,160,.95)}
+.slot.wrong{outline:4px solid var(--bad);background:transparent;border-color:rgba(255,131,147,.95)}
+.slot.stack{border-radius:999px; width:42px; height:42px; font-size:11px}
+.legend{margin-top:12px;color:var(--muted);font-size:13px;line-height:1.7}
+.qa{margin-top:16px}.qTitle{font-size:18px;font-weight:800;margin:0 0 8px}
+.btnGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{
+  border:1px solid rgba(255,255,255,.09); background:var(--panel2);color:var(--text);
+  padding:14px 14px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;
+}
+button:hover{filter:brightness(1.08)}
+button.primary{background:linear-gradient(135deg,#4a93ff,#7edbff);color:#07111e}
+button.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+.result{min-height:62px;margin-top:14px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#0f1726;color:var(--muted);line-height:1.6}
+.result.good{background:rgba(112,227,160,.09);border-color:rgba(112,227,160,.45);color:#dfffee}
+.result.bad{background:rgba(255,131,147,.1);border-color:rgba(255,131,147,.45);color:#ffe5ea}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat div{background:#101827;border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}
+details{margin-top:14px} summary{cursor:pointer;font-weight:800}
+.muted{color:var(--muted);line-height:1.7}.mini{font-size:13px;color:var(--muted);line-height:1.7}
+.kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0a101b;border:1px solid var(--line);padding:2px 6px;border-radius:6px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>真偽AoE判断 Round 3 ハード</h1>
+  <div class="sub">
+    Round 3：<b>集合/散会 + 雷 + 北の視線</b> の真偽判断後、選んだポジションの<b>実際の立ち位置</b>と<b>視線処理</b>を答える版。<br>
+    上の赤い輪は頭割り/散会、下の青い輪は雷。球が<b>？なら逆</b>。視線は <b>紫の目なら見ない</b>、<b>黄色の？目なら見る</b>。
+  </div>
+
+  <div class="layout">
+    <section class="card">
+      <div class="row">
+        <span class="pill">Round 3</span>
+        <span class="pill">ハード</span>
+        <label class="pill"><input type="checkbox" id="autoNext" checked> 正解後に自動で次へ</label>
+      </div>
+
+      <div class="qa" style="margin-top:12px">
+        <div class="qTitle">自分のポジション</div>
+        <div class="posGrid" id="posGrid"></div>
+      </div>
+
+      <div class="boardWrap">
+        <div class="boardTitle">正しい立ち位置をクリック</div>
+        <div class="board">
+          <svg class="lightningLayer" id="lightningLayer" viewBox="0 0 100 100" aria-label="雷予兆">
+            <defs>
+              <clipPath id="arenaClipR3H"><circle cx="50" cy="50" r="50"></circle></clipPath>
+            </defs>
+            <g id="lightningGroup" clip-path="url(#arenaClipR3H)">
+              <rect class="lightRect" data-band="0" x="0" y="-50" width="25" height="200"></rect>
+              <rect class="lightRect" data-band="1" x="25" y="-50" width="25" height="200"></rect>
+              <rect class="lightRect" data-band="2" x="50" y="-50" width="25" height="200"></rect>
+              <rect class="lightRect" data-band="3" x="75" y="-50" width="25" height="200"></rect>
+            </g>
+          </svg>
+
+          <div class="dividerV"></div>
+          <div class="dividerH"></div>
+          <div class="markN">北</div>
+          <div class="quadLabel l1">1</div>
+          <div class="quadLabel l2">2</div>
+          <div class="quadLabel l3">3</div>
+          <div class="quadLabel l4">4</div>
+
+          <div class="gazeGroup">
+            <div class="gazeLabel">北の視線</div>
+            <div class="gazeEye purple" id="gazeEye">◉</div>
+          </div>
+
+          <div class="boss"><div class="bossCore"></div></div>
+
+          <div class="ringGroup ringTop">
+            <div class="ringLabel">上</div>
+            <div class="ring red">
+              <div class="ball red" id="topBall"></div>
+              <div class="ringText" id="topShown">頭割り</div>
+            </div>
+          </div>
+
+          <div class="ringGroup ringBottom">
+            <div class="ringLabel">下</div>
+            <div class="ring blue">
+              <div class="ball blue" id="bottomBall"></div>
+              <div class="ringText">雷</div>
+            </div>
+          </div>
+          <button class="slot stack" data-slot-id="I_N_stack">集合</button>
+          <button class="slot stack" data-slot-id="I_S_stack">集合</button>
+          <button class="slot" data-slot-id="I_N_ol">散会</button>
+          <button class="slot" data-slot-id="I_N_il">散会</button>
+          <button class="slot" data-slot-id="I_N_ir">散会</button>
+          <button class="slot" data-slot-id="I_N_or">散会</button>
+          <button class="slot" data-slot-id="I_S_ol">散会</button>
+          <button class="slot" data-slot-id="I_S_il">散会</button>
+          <button class="slot" data-slot-id="I_S_ir">散会</button>
+          <button class="slot" data-slot-id="I_S_or">散会</button>
+
+          <button class="slot stack" data-slot-id="O_N_stack">集合</button>
+          <button class="slot stack" data-slot-id="O_S_stack">集合</button>
+          <button class="slot" data-slot-id="O_N_ol">散会</button>
+          <button class="slot" data-slot-id="O_N_il">散会</button>
+          <button class="slot" data-slot-id="O_N_ir">散会</button>
+          <button class="slot" data-slot-id="O_N_or">散会</button>
+          <button class="slot" data-slot-id="O_S_ol">散会</button>
+          <button class="slot" data-slot-id="O_S_il">散会</button>
+          <button class="slot" data-slot-id="O_S_ir">散会</button>
+          <button class="slot" data-slot-id="O_S_or">散会</button>
+
+        </div>
+
+        <div class="legend">
+          ・現在の見た目にあわせて、<b>集合4か所・散会16か所</b>の候補が表示されます。<br>
+          ・集合4択：内側TH=北、内側DPS=南、外側TH=西、外側DPS=東。<br>
+          ・散会：北側は <b>D3 / MT / D1 / H1</b>、南側は <b>H2 / D2 / ST / D4</b> の並び。
+        </div>
+      </div>
+
+      <div class="qa">
+        <div class="qTitle">Q2. 北を見る？</div>
+        <div class="btnGrid">
+          <button class="gazeBtn" data-value="look">見る</button>
+          <button class="gazeBtn" data-value="avoid">見ない</button>
+        </div>
+      </div>
+
+      <div class="btnGrid" style="margin-top:14px">
+        <button class="primary" id="checkBtn">判定</button>
+        <button id="nextBtn">次の問題</button>
+      </div>
+      <div class="result" id="result">ポジション・立ち位置・視線処理を選んで判定してね。</div>
+    </section>
+
+    <aside class="card">
+      <h2 style="margin:0 0 10px;font-size:18px">成績</h2>
+      <div class="stat">
+        <div><b id="total">0</b><span>回答</span></div>
+        <div><b id="ok">0</b><span>正解</span></div>
+        <div><b id="ng">0</b><span>ミス</span></div>
+        <div><b id="rate">0%</b><span>正答率</span></div>
+      </div>
+
+      <div class="btnGrid" style="grid-template-columns:1fr;margin-top:12px">
+        <button class="ghost" id="retryBtn">同じ問題をやり直す</button>
+        <button class="ghost" id="resetBtn">成績リセット</button>
+      </div>
+
+      <details open>
+        <summary>仕様メモ</summary>
+        <div class="muted">
+          <p>上の赤い輪：頭割り/散会。<b>？なし</b>なら見たまま、<b>？あり</b>なら逆。回答上は頭割り＝集合。</p>
+          <p>下の青い輪：雷。<b>？なし</b>なら見えている雷予兆が危険、<b>？あり</b>なら逆。</p>
+          <p>視線：<b>紫の目</b>なら見ない、<b>黄色の？目</b>なら見る。</p>
+          <p>集合：THは北側、DPSは南側。散会：北側 <b>D3 / MT / D1 / H1</b>、南側 <b>H2 / D2 / ST / D4</b>。</p>
+        </div>
+      </details>
+
+      <details open>
+        <summary>ミス履歴</summary>
+        <div id="misses" class="mini">まだミスはありません。</div>
+      </details>
+
+      <details>
+        <summary>権利表記</summary>
+        <div class="mini">このツールはFINAL FANTASY XIVの非公式ファンメイド練習ツールです。FINAL FANTASY XIV © SQUARE ENIX</div>
+      </details>
+    </aside>
+  </div>
+</div>
+
+<script>
+const POSITIONS = ["MT","ST","H1","H2","D1","D2","D3","D4"];
+const TH = new Set(["MT","ST","H1","H2"]);
+const LIGHT_PATTERNS = [
+  { slope:'up', label:'右肩上がり', startsDanger:false },
+  { slope:'up', label:'右肩上がり', startsDanger:true },
+  { slope:'down', label:'右肩下がり', startsDanger:false },
+  { slope:'down', label:'右肩下がり', startsDanger:true }
+];
+const GAZE_PATTERNS = [
+  { value:'avoid', style:'purple', shown:'紫の目', suffix:'' },
+  { value:'look', style:'yellow', shown:'黄色の？目', suffix:'？' }
+];
+const SHOWN_MECHS = [
+  { value:'stack', shown:'頭割り' },
+  { value:'spread', shown:'散会' }
+];
+
+const SPREAD_ROLE_TO_SUFFIX = {
+  D3:'N_ol', MT:'N_il', D1:'N_ir', H1:'N_or',
+  H2:'S_ol', D2:'S_il', ST:'S_ir', D4:'S_or'
+};
+
+let q = null;
+let selectedPos = localStorage.getItem('shingiR3HardPos') || 'MT';
+let selectedSlot = null;
+let selectedGaze = null;
+let slotCoords = {};
+let stats = JSON.parse(localStorage.getItem('shingiR3HardStats') || '{"total":0,"ok":0,"ng":0,"misses":[]}');
+
+function flipMech(m){ return m === 'stack' ? 'spread' : 'stack'; }
+function shownMechLabel(m){ return m === 'stack' ? '頭割り' : '散会'; }
+function actualMechLabel(m){ return m === 'stack' ? '集合' : '散会'; }
+
+function rotatePoint(x, y, deg){
+  const rad = deg * Math.PI / 180;
+  const dx = x - 50, dy = y - 50;
+  return {
+    x: 50 + dx * Math.cos(rad) - dy * Math.sin(rad),
+    y: 50 + dx * Math.sin(rad) + dy * Math.cos(rad)
+  };
+}
+
+function actualSafeBands(){
+  const shownDanger = [];
+  for(let i=0;i<4;i++){
+    shownDanger.push(q.light.startsDanger ? i % 2 === 0 : i % 2 === 1);
+  }
+  return [0,1,2,3].filter(i => {
+    const actualDanger = q.bottomFake ? !shownDanger[i] : shownDanger[i];
+    return !actualDanger;
+  });
+}
+
+
+
+function buildSlotCoords(){
+  // 散会位置は、見た目の4帯 a,b,c,d（上から順）を基準に配置する。
+  // a,d は境界線ぎりぎり内側、b,c は各帯の中央線上。
+  // 各線分上の4点は、両端を最外周に置き、その間を等間隔に3分割して配置。
+  const angle = q.light.slope === 'up' ? -45 : 45;
+
+  // slope='down' のときは a,b,c,d = x=24,37.5,62.5,76
+  // slope='up'   のときは左右反転して a,b,c,d = x=76,62.5,37.5,24
+  let bandX;
+  if(q.light.slope === 'up'){
+    bandX = {
+      outerNorth: 77.8,  // a
+      innerNorth: 62.5,  // b
+      innerSouth: 37.5,  // c
+      outerSouth: 22.2   // d
+    };
+  } else {
+    bandX = {
+      outerNorth: 22.2,  // a
+      innerNorth: 37.5,  // b
+      innerSouth: 62.5,  // c
+      outerSouth: 77.8   // d
+    };
+  }
+
+  function linePointsForBand(xBand){
+    const dx = xBand - 50;
+    // ボタンが外周で見切れないように、実際の円周より少し内側を
+    // 端点として使う。中央2点はその間を等間隔に3分割。
+    const visibleRadius = 46.2;
+    const span = Math.sqrt(visibleRadius * visibleRadius - dx * dx);
+    const yStart = 50 - span;
+    const yEnd = 50 + span;
+    const step = (yEnd - yStart) / 3;
+    const ys = [yStart, yStart + step, yStart + step * 2, yEnd];
+    return ys.map(y => rotatePoint(xBand, y, angle));
+  }
+
+  const outerNorthSpread = linePointsForBand(bandX.outerNorth);
+  const innerNorthSpread = linePointsForBand(bandX.innerNorth);
+  const innerSouthSpread = linePointsForBand(bandX.innerSouth);
+  const outerSouthSpread = linePointsForBand(bandX.outerSouth);
+
+  // 集合はユーザー指定どおり東西南北に1個ずつ
+  slotCoords = {
+    I_N_stack: {x:50.0, y:25.0}, // 北
+    I_S_stack: {x:50.0, y:75.0}, // 南
+    O_N_stack: {x:25.0, y:50.0}, // 西（TH）
+    O_S_stack: {x:75.0, y:50.0}, // 東（DPS）
+
+    I_N_ol: innerNorthSpread[0],
+    I_N_il: innerNorthSpread[1],
+    I_N_ir: innerNorthSpread[2],
+    I_N_or: innerNorthSpread[3],
+
+    I_S_ol: innerSouthSpread[0],
+    I_S_il: innerSouthSpread[1],
+    I_S_ir: innerSouthSpread[2],
+    I_S_or: innerSouthSpread[3],
+
+    O_N_ol: outerNorthSpread[0],
+    O_N_il: outerNorthSpread[1],
+    O_N_ir: outerNorthSpread[2],
+    O_N_or: outerNorthSpread[3],
+
+    O_S_ol: outerSouthSpread[0],
+    O_S_il: outerSouthSpread[1],
+    O_S_ir: outerSouthSpread[2],
+    O_S_or: outerSouthSpread[3]
+  };
+}
+
+
+
+function renderSlots(mark=false){
+  const answer = correctSlot();
+  document.querySelectorAll('.slot').forEach(btn=>{
+    const id = btn.dataset.slotId;
+    const p = slotCoords[id];
+    btn.style.left = p.x + '%';
+    btn.style.top = p.y + '%';
+    btn.classList.remove('selected','correct','wrong');
+    if(id === selectedSlot) btn.classList.add('selected');
+    if(mark){
+      if(id === answer) btn.classList.add('correct');
+      else if(id === selectedSlot) btn.classList.add('wrong');
+    }
+  });
+}
+
+
+function pointInLightningSafe(pt){
+  // 表示されている雷帯に対して、その座標が「実際の安地」かを判定する。
+  // 下の輪が？なしなら紫を避ける。？ありなら紫を踏む。
+  const dx = pt.x - 50;
+  const dy = pt.y - 50;
+  const deg = q.light.slope === 'up' ? 45 : -45; // 表示回転の逆
+  const rad = deg * Math.PI / 180;
+  const xr = 50 + dx * Math.cos(rad) - dy * Math.sin(rad);
+  let band = Math.floor(xr / 25);
+  if(band < 0) band = 0;
+  if(band > 3) band = 3;
+
+  let shownDanger = q.light.startsDanger ? (band % 2 === 0) : (band % 2 === 1);
+  let actualDanger = q.bottomFake ? !shownDanger : shownDanger;
+  return !actualDanger;
+}
+
+function correctSlot(){
+  const suffix = q.actualMechanic === 'stack'
+    ? (TH.has(selectedPos) ? 'N_stack' : 'S_stack')
+    : SPREAD_ROLE_TO_SUFFIX[selectedPos];
+
+  const candidates = ['I_' + suffix, 'O_' + suffix];
+  const safeCandidate = candidates.find(id => pointInLightningSafe(slotCoords[id]));
+
+  // 念のため、どちらも取れなかった場合は最初の候補を返す
+  return safeCandidate || candidates[0];
+}
+
+function slotLabel(id){
+  const prefix = id.startsWith('I_') ? '中央寄り帯' : '外寄り帯';
+  const suffix = id.slice(2);
+  const labels = {
+    N_stack:'TH集合',
+    S_stack:'DPS集合',
+    N_ol:'北散会 左外',
+    N_il:'北散会 左内',
+    N_ir:'北散会 右内',
+    N_or:'北散会 右外',
+    S_ol:'南散会 左外',
+    S_il:'南散会 左内',
+    S_ir:'南散会 右内',
+    S_or:'南散会 右外'
+  };
+  return prefix + ' ' + (labels[suffix] || suffix);
+}
+
+
+function newQuestion(){
+  const shown = SHOWN_MECHS[Math.floor(Math.random()*SHOWN_MECHS.length)].value;
+  const light = LIGHT_PATTERNS[Math.floor(Math.random()*LIGHT_PATTERNS.length)];
+  const gaze = GAZE_PATTERNS[Math.floor(Math.random()*GAZE_PATTERNS.length)];
+  const topFake = Math.random() < 0.5;
+  const bottomFake = Math.random() < 0.5;
+  q = {
+    shownMechanic: shown,
+    actualMechanic: topFake ? flipMech(shown) : shown,
+    topFake,
+    light,
+    bottomFake,
+    gaze,
+    correctGaze: gaze.value
+  };
+  selectedSlot = null;
+  selectedGaze = null;
+  buildSlotCoords();
+  renderAll();
+  setResult('ポジション・立ち位置・視線処理を選んで判定してね。', '');
+}
+
+function renderAll(){
+  renderPos();
+  renderQuestion();
+  renderSlots(false);
+  renderGazeButtons(false);
+}
+
+function renderPos(){
+  const box = document.getElementById('posGrid');
+  box.innerHTML = '';
+  for(const p of POSITIONS){
+    const btn = document.createElement('button');
+    btn.className = 'posBtn' + (p === selectedPos ? ' selected' : '');
+    btn.textContent = p;
+    btn.onclick = ()=>{ selectedPos = p; localStorage.setItem('shingiR3HardPos', p); renderPos(); renderSlots(false); };
+    box.appendChild(btn);
+  }
+}
+
+function renderQuestion(){
+  document.getElementById('topShown').textContent = shownMechLabel(q.shownMechanic);
+  document.getElementById('topBall').textContent = q.topFake ? '？' : '';
+  document.getElementById('bottomBall').textContent = q.bottomFake ? '？' : '';
+
+  const group = document.getElementById('lightningGroup');
+  group.setAttribute('transform', q.light.slope === 'up' ? 'rotate(-45 50 50)' : 'rotate(45 50 50)');
+  document.querySelectorAll('.lightRect').forEach((el, idx)=>{
+    const shownDanger = q.light.startsDanger ? idx % 2 === 0 : idx % 2 === 1;
+    el.style.fill = shownDanger ? 'rgba(205,90,255,0.52)' : 'rgba(255,255,255,0)';
+  });
+
+  const gazeEye = document.getElementById('gazeEye');
+  gazeEye.classList.remove('purple','yellow');
+  gazeEye.classList.add(q.gaze.style);
+  gazeEye.innerHTML = `◉${q.gaze.suffix ? `<small>${q.gaze.suffix}</small>` : ''}`;
+}
+
+function renderGazeButtons(mark){
+  document.querySelectorAll('.gazeBtn').forEach(btn=>{
+    btn.classList.remove('selected','correct','wrong');
+    if(btn.dataset.value === selectedGaze) btn.classList.add('selected');
+    if(mark){
+      if(btn.dataset.value === q.correctGaze) btn.classList.add('correct');
+      else if(btn.dataset.value === selectedGaze) btn.classList.add('wrong');
+    }
+  });
+}
+
+function setResult(msg, cls){
+  const el = document.getElementById('result');
+  el.innerHTML = msg;
+  el.className = 'result' + (cls ? ' ' + cls : '');
+}
+
+function check(){
+  if(!selectedSlot){ setResult('立ち位置を選んでね。', 'bad'); return; }
+  if(!selectedGaze){ setResult('北を見るか見ないかを選んでね。', 'bad'); return; }
+
+  const answerSlot = correctSlot();
+  const ok = selectedSlot === answerSlot && selectedGaze === q.correctGaze;
+
+  stats.total += 1;
+  if(ok) stats.ok += 1;
+  else {
+    stats.ng += 1;
+    stats.misses.unshift(
+      `${selectedPos} / 上:${shownMechLabel(q.shownMechanic)}${q.topFake ? '？' : ''} / 下:雷${q.bottomFake ? '？' : ''} / 視線:${q.gaze.shown} → 正解:${actualMechLabel(q.actualMechanic)}・${slotLabel(answerSlot)}・${q.correctGaze === 'look' ? '見る' : '見ない'}`
+    );
+    stats.misses = stats.misses.slice(0, 12);
+  }
+  saveStats(); renderStats(); renderSlots(true); renderGazeButtons(true);
+  const msg = `正解：<b>${actualMechLabel(q.actualMechanic)}</b> / 立ち位置 <b>${slotLabel(answerSlot)}</b> / 北を <b>${q.correctGaze === 'look' ? '見る' : '見ない'}</b>`;
+  setResult(ok ? `正解！ ${msg}` : `惜しい。${msg}`, ok ? 'good' : 'bad');
+  if(ok && document.getElementById('autoNext').checked){ setTimeout(newQuestion, 900); }
+}
+
+function retry(){
+  selectedSlot = null;
+  selectedGaze = null;
+  renderSlots(false);
+  renderGazeButtons(false);
+  setResult('同じ問題です。もう一度選んでね。', '');
+}
+
+function saveStats(){ localStorage.setItem('shingiR3HardStats', JSON.stringify(stats)); }
+function renderStats(){
+  document.getElementById('total').textContent = stats.total;
+  document.getElementById('ok').textContent = stats.ok;
+  document.getElementById('ng').textContent = stats.ng;
+  document.getElementById('rate').textContent = stats.total ? Math.round(stats.ok / stats.total * 100) + '%' : '0%';
+  document.getElementById('misses').innerHTML = stats.misses.length ? stats.misses.map(m=>`・${m}`).join('<br>') : 'まだミスはありません。';
+}
+
+document.querySelectorAll('.slot').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    selectedSlot = btn.dataset.slotId;
+    renderSlots(false);
+  });
+});
+document.querySelectorAll('.gazeBtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    selectedGaze = btn.dataset.value;
+    renderGazeButtons(false);
+  });
+});
+document.getElementById('checkBtn').onclick = check;
+document.getElementById('nextBtn').onclick = newQuestion;
+document.getElementById('retryBtn').onclick = retry;
+document.getElementById('resetBtn').onclick = ()=>{ stats = {total:0, ok:0, ng:0, misses:[]}; saveStats(); renderStats(); };
+
+renderStats();
+newQuestion();
+</script>
+</body>
+</html>
