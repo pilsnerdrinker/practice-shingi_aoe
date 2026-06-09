@@ -44,7 +44,7 @@ h1{margin:0 0 8px;font-size:clamp(24px,4vw,38px)}
 .l1{left:28%;top:23%}.l2{right:22%;top:23%}.l3{right:24%;bottom:20%}.l4{left:28%;bottom:20%}
 .boss{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:12}
 .bossCore{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #fff3aa, #f8bb47 55%, #8f5b14 100%);box-shadow:0 0 18px rgba(255,197,82,.4)}
-.ringGroup{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:13}
+.ringGroup{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:40}
 .ringTop{top:33%}.ringBottom{top:57%}
 .ringLabel{font-size:14px;font-weight:800;letter-spacing:.03em;color:#d9e5ff;min-width:52px}
 .ring{width:122px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;position:relative;font-weight:900;box-shadow:inset 0 0 0 2px rgba(255,255,255,.16)}
@@ -63,6 +63,19 @@ h1{margin:0 0 8px;font-size:clamp(24px,4vw,38px)}
 }
 .clickMarker.correct{border-color:var(--good);background:rgba(112,227,160,.20)}
 .clickMarker.wrong{border-color:var(--bad);background:rgba(255,131,147,.20)}
+.answerAreaLayer{
+  position:absolute;
+  inset:0;
+  z-index:18;
+  pointer-events:none;
+  display:none;
+}
+.answerAreaFill{
+  fill:url(#answerStripePattern);
+  stroke:rgba(112,227,160,.42);
+  stroke-width:.45;
+  filter:none;
+}
 .legend{margin-top:12px;color:var(--muted);font-size:13px;line-height:1.7}
 .btnGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 button{
@@ -139,6 +152,12 @@ details{margin-top:14px} summary{cursor:pointer;font-weight:800}
               <div class="ringText">氷床</div>
             </div>
           </div>
+          <svg class="answerAreaLayer" id="answerAreaLayer" viewBox="0 0 100 100" aria-label="正解範囲">
+            <defs>
+              <clipPath id="answerArenaClipR2H"><circle cx="50" cy="50" r="50"></circle></clipPath>
+            </defs>
+            <g id="answerAreaGroup" clip-path="url(#answerArenaClipR2H)"></g>
+          </svg>
           <div id="clickMarker" class="clickMarker" style="display:none"></div>
         </div>
 
@@ -215,6 +234,7 @@ function newQuestion(){
   const bottomFake = Math.random() < 0.5;
   q = { ice, light, topFake, bottomFake };
   selectedPoint = null;
+  clearAnswerArea();
   renderQuestion();
   renderSelection(false);
   setResult('安全だと思う場所をクリックして判定してね。', '');
@@ -310,6 +330,72 @@ function check(){
 }
 
 
+
+function clearAnswerArea(){
+  const layer = document.getElementById('answerAreaLayer');
+  const group = document.getElementById('answerAreaGroup');
+  if(layer) layer.style.display = 'none';
+  if(group) group.innerHTML = '';
+}
+
+function actualLightningSafeBands(){
+  const safeBands = [];
+  for(let idx=0; idx<4; idx++){
+    let danger = q.light.startsDanger ? (idx % 2 === 0) : (idx % 2 === 1);
+    if(q.topFake) danger = !danger;
+    if(!danger) safeBands.push(idx);
+  }
+  return safeBands;
+}
+
+function actualIceSafeZones(){
+  const safe = actualIceSafe();
+  return safe === '13' ? ['A','C'] : ['B','D'];
+}
+
+function iceClipRect(zone){
+  const rects = {
+    A: {x:0,  y:0,  w:50, h:50},
+    B: {x:50, y:0,  w:50, h:50},
+    C: {x:50, y:50, w:50, h:50},
+    D: {x:0,  y:50, w:50, h:50}
+  };
+  return rects[zone];
+}
+
+function showAnswerArea(){
+  const layer = document.getElementById('answerAreaLayer');
+  const group = document.getElementById('answerAreaGroup');
+  if(!layer || !group) return;
+
+  const rotation = q.light.slope === 'up' ? 'rotate(-45 50 50)' : 'rotate(45 50 50)';
+  const safeBands = actualLightningSafeBands();
+  const safeZones = actualIceSafeZones();
+
+  const clipDefs = safeZones.map(zone=>{
+    const r = iceClipRect(zone);
+    return `<clipPath id="answerIceClip_${zone}"><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"></rect></clipPath>`;
+  }).join('');
+
+  const defs = `
+    <pattern id="answerStripePattern" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
+      <rect width="4" height="4" fill="rgba(112,227,160,0.02)"></rect>
+      <line x1="0" y1="0" x2="0" y2="4" stroke="rgba(112,227,160,0.45)" stroke-width="1.3"></line>
+    </pattern>
+    ${clipDefs}
+  `;
+
+  const shapes = safeZones.map(zone=>{
+    const bandRects = safeBands.map(idx=>{
+      return `<rect class="answerAreaFill" x="${idx * 25}" y="-50" width="25" height="200"></rect>`;
+    }).join('');
+    return `<g clip-path="url(#answerIceClip_${zone})"><g transform="${rotation}">${bandRects}</g></g>`;
+  }).join('');
+
+  group.innerHTML = `<defs>${defs}</defs>${shapes}`;
+  layer.style.display = 'block';
+}
+
 function findRepresentativeSafePoint(){
   for(let y=12; y<=88; y+=2){
     for(let x=12; x<=88; x+=2){
@@ -323,13 +409,15 @@ function findRepresentativeSafePoint(){
 }
 
 function showAnswer(){
-  selectedPoint = findRepresentativeSafePoint();
-  renderSelection(true);
-  setResult('正解を表示中：表示された位置を含む、<b>実際の雷安地かつ氷安地</b>が正解です。', 'good');
+  selectedPoint = null;
+  renderSelection(false);
+  showAnswerArea();
+  setResult('正解を表示中：<b>緑で塗られた範囲すべて</b>が、実際の雷安地かつ氷安地です。', 'good');
 }
 
 function retry(){
   selectedPoint = null;
+  clearAnswerArea();
   renderSelection(false);
   setResult('同じ問題です。もう一度選んでね。', '');
 }
@@ -346,6 +434,7 @@ function renderStats(){
 document.querySelector('.board').addEventListener('click', (e)=>{
   if(e.target.closest('.ringGroup') || e.target.closest('.boss')) return;
   const rect = e.currentTarget.getBoundingClientRect();
+  clearAnswerArea();
   selectedPoint = {
     x: (e.clientX - rect.left) / rect.width * 100,
     y: (e.clientY - rect.top) / rect.height * 100
