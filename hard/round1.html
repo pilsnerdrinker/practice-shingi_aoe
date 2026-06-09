@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>真偽AoE判断 Round 1 ハード</title>
+<title>P1なぞなぞマジック（真偽AoE判断） Round 1 ハード</title>
 <style>
 :root{
   --panel:#161f31; --panel2:#1c2740; --text:#eef4ff; --muted:#aeb9d3;
@@ -96,7 +96,7 @@ details{margin-top:14px} summary{cursor:pointer;font-weight:800}
 </head>
 <body>
 <div class="wrap">
-  <h1>真偽AoE判断 Round 1 ハード</h1>
+  <h1>P1なぞなぞマジック（真偽AoE判断） Round 1 ハード</h1>
   <div class="sub">
     Round 1：<b>集合/散会 + 氷床</b> の真偽判断後、選んだポジションの<b>実際の立ち位置</b>をクリックする版。<br>
     上の赤い輪は頭割り/散会、下の青い輪は氷床。球が<b>？なら逆</b>。
@@ -179,9 +179,10 @@ details{margin-top:14px} summary{cursor:pointer;font-weight:800}
         </div>
       </div>
 
-      <div class="btnGrid" style="margin-top:14px">
+      <div class="btnGrid" style="margin-top:14px;grid-template-columns:1fr 1fr 1fr">
         <button class="primary" id="checkBtn">判定</button>
-        <button id="nextBtn">次の問題</button>
+        <button id="showAnswerBtn">正解を表示</button>
+        <button id="nextBtn">別の問題に変える</button>
       </div>
       <div class="result" id="result">ポジションと立ち位置を選んで判定してね。</div>
     </section>
@@ -227,7 +228,7 @@ details{margin-top:14px} summary{cursor:pointer;font-weight:800}
 
       <details>
         <summary>権利表記</summary>
-        <div class="mini">このツールはFINAL FANTASY XIVの非公式ファンメイド練習ツールです。FINAL FANTASY XIV © SQUARE ENIX</div>
+        <div class="mini">このアプリはFINAL FANTASY XIVの非公式ファンメイド練習アプリです。FINAL FANTASY XIV © SQUARE ENIX</div>
       </details>
     </aside>
   </div>
@@ -368,6 +369,15 @@ function check(){
   if(ok && document.getElementById("autoNext").checked){ setTimeout(newQuestion, 850); }
 }
 
+
+function showAnswer(){
+  const answer = calcAnswerSlot();
+  selectedSlot = answer;
+  renderSlots(true);
+  const msg = `正解：<b>${slotLabels[answer]}</b>（${actualMechLabel(q.actualMechanic)} / 安置${q.safe}）`;
+  setResult(msg, "good");
+}
+
 function retry(){
   selectedSlot = null;
   renderSlots(false);
@@ -387,6 +397,7 @@ document.querySelectorAll(".slot").forEach(btn=>{
   btn.addEventListener("click", ()=>{ selectedSlot = btn.dataset.slot; renderSlots(false); });
 });
 document.getElementById("checkBtn").onclick = check;
+document.getElementById("showAnswerBtn").onclick = showAnswer;
 document.getElementById("nextBtn").onclick = newQuestion;
 document.getElementById("retryBtn").onclick = retry;
 document.getElementById("resetBtn").onclick = ()=>{ stats = {total:0, ok:0, ng:0, misses:[]}; saveStats(); renderStats(); };
