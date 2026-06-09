@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>真偽AoE判断 Round 1 ノーマル v2</title>
+<title>P1なぞなぞマジック（真偽AoE判断） Round 1 ノーマル v2</title>
 <style>
 :root{
   --bg:#0a0f17;
@@ -111,7 +111,7 @@ summary{cursor:pointer;font-weight:800}
 </head>
 <body>
 <div class="wrap">
-  <h1>真偽AoE判断 Round 1 ノーマル</h1>
+  <h1>P1なぞなぞマジック（真偽AoE判断） Round 1 ノーマル</h1>
   <div class="sub">
     スクショそのものは使わず、<b>構造だけ抽象化した練習版</b>。<br>
     上の<b>赤い輪</b>は頭割り/散会、下の<b>青い輪</b>は氷床。輪の中の球が<b>無地なら見たまま</b>、<b>？つきなら逆</b>。
@@ -178,9 +178,10 @@ summary{cursor:pointer;font-weight:800}
         </div>
       </div>
 
-      <div class="btnGrid" style="margin-top:14px">
+      <div class="btnGrid" style="margin-top:14px;grid-template-columns:1fr 1fr 1fr">
         <button class="primary" id="checkBtn">判定</button>
-        <button id="nextBtn">次の問題</button>
+        <button id="showAnswerBtn">正解を表示</button>
+        <button id="nextBtn">別の問題に変える</button>
       </div>
       <div class="result" id="result">選択して判定してね。</div>
     </section>
@@ -222,7 +223,7 @@ summary{cursor:pointer;font-weight:800}
 
       <details>
         <summary>権利表記</summary>
-        <div class="mini">このツールはFINAL FANTASY XIVの非公式ファンメイド練習ツールです。FINAL FANTASY XIV © SQUARE ENIX</div>
+        <div class="mini">このアプリはFINAL FANTASY XIVの非公式ファンメイド練習アプリです。FINAL FANTASY XIV © SQUARE ENIX</div>
       </details>
     </aside>
   </div>
@@ -328,6 +329,15 @@ function check(){
   if(ok && document.getElementById('autoNext').checked){ setTimeout(newQuestion, 800); }
 }
 
+
+function showAnswer(){
+  selectedMech = q.actualMechanic;
+  selectedIce = q.correctIceChoice;
+  renderButtons(true);
+  const ans = `正解：<b>${answerMechLabel(q.actualMechanic)}</b> / 氷予兆を<b>${labelIceChoice(q.correctIceChoice)}</b>`;
+  setResult(ans, "good");
+}
+
 function retry(){
   selectedMech = null;
   selectedIce = null;
@@ -347,6 +357,7 @@ function renderStats(){
 document.querySelectorAll('.mechBtn').forEach(btn=>btn.addEventListener('click', ()=>{ selectedMech = btn.dataset.value; renderButtons(false); }));
 document.querySelectorAll('.iceBtn').forEach(btn=>btn.addEventListener('click', ()=>{ selectedIce = btn.dataset.value; renderButtons(false); }));
 document.getElementById('checkBtn').addEventListener('click', check);
+document.getElementById('showAnswerBtn').addEventListener('click', showAnswer);
 document.getElementById('nextBtn').addEventListener('click', newQuestion);
 document.getElementById('retryBtn').addEventListener('click', retry);
 document.getElementById('resetBtn').addEventListener('click', ()=>{ stats = {total:0, ok:0, ng:0, misses:[]}; saveStats(); renderStats(); });
